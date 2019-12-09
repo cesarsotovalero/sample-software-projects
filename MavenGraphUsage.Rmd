@@ -1,0 +1,49 @@
+---
+title: "Maven Graph Usage"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+ga_versions_users <- read.csv(file = "ga_versions_users.csv", sep = ",")
+clean_last_releases <- read.csv(file = "clean_last_releases.csv", sep = ",")
+colnames(ga_versions_users)
+
+dataset <- inner_join(ga_versions_users, clean_last_releases, by = c("groupID", "artifact"))
+dataset <- dataset %>%  unite(coordinates,  c("groupID", "artifact", "lastVersion"), sep = ":")
+
+dataset <- dataset %>% filter(nbUsers != 0)
+dataset <- dataset %>% filter(!str_detect(repo, "\\$")) 
+dataset <- dataset %>% filter(str_detect(repo, "github.com"))
+
+# process date
+dataset$releaseDate <- as.character(dataset$releaseDate)
+dataset$releaseDate <- substr(dataset$releaseDate, start = 1, stop = 10)
+dataset$releaseDate <- as.Date(dataset$releaseDate)
+dataset$integerReleaseDate <- as.integer(format(dataset$releaseDate, "%Y%m%d"))
+
+```
+
+
+```{r}
+dataset_f <- dataset %>% select(coordinates, nbUsers, nbVersions, nbDirectDeps, nbDirectUsers, integerReleaseDate)
+
+dataset_f <- dataset_f %>% slice(1:100000)
+
+df <- data.frame(
+  coordinates = factor(), 
+  nbUsers = integer(),
+  nbVersions = integer(),
+  nbDirectDeps = integer(),
+  nbDirectUsers = integer(),
+  integerReleaseDate = integer()
+)
+
+sample <- next.projects(100000, df, universe=dataset_f, coordinates ~ nbUsers + nbVersions + nbDirectDeps + nbDirectUsers + integerReleaseDate)
+
+
+    ```

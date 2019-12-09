@@ -1,0 +1,38 @@
+---
+title: "Usage"
+output: html_notebook
+---
+
+
+### How to compute the score?
+
+This example below uses the Ohloh universe to score the Mozilla
+Firefox project along the space (Lines of Code, Developers). The text
+id ~ total_code_lines + twelve_month_contributor_count is R syntax and
+commonly used to define models.
+
+```{r}
+
+
+url <- "http://sailhome.cs.queensu.ca/replication/representativeness/masterdata.txt"
+ohloh <- read.delim(url, header=T, na.strings=c("", "NA"))
+sample <- ohloh[ohloh$name=="Mozilla Firefox",]
+score <- score.projects(sample, universe=ohloh, id ~ total_code_lines + twelve_month_contributor_count)
+
+# The resulting total score is in score$score and the dimension scores are in score$dimension.score.
+```
+
+
+### How to select the next projects?
+
+This example adds 10 more projects to the sample from the previous
+example. The result is a data frame np$new.projects with the projects
+to be added to the sample and the score object of the combined sample
+np$score.
+
+```{r}
+np <- next.projects(10, sample, universe=ohloh, id ~ total_code_lines + twelve_month_contributor_count)
+
+np$new.projects
+```
+

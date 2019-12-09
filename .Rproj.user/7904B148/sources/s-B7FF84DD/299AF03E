@@ -1,0 +1,27 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1575897810812.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "299AF03E",
+    "lastKnownWriteTime" : 1575891900,
+    "last_content_update" : 1575891900,
+    "path" : "~/Documents/codes/R/DiversityMeasure/SampleSoftwareProjects.R",
+    "project_path" : "SampleSoftwareProjects.R",
+    "properties" : {
+        "cursorPosition" : "186,105",
+        "docOutlineVisible" : "1",
+        "scrollLine" : "151",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
