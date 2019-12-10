@@ -1,0 +1,262 @@
+---
+title: "Comparison betwen the MDG (2018) and MDG (2019)"
+output: html_notebook
+---
+
+Load packages
+
+```{r}
+library(tidyverse)
+library(latex2exp)
+library(scales)
+library(extrafont)
+library(viridis)
+library(ggridges)
+library(forcats)
+library(ggExtra)
+library(grid)
+library(gtable)
+library(lubridate)
+
+# set fonts
+loadfonts(device = "pdf")
+
+# execute once to add fonts:
+font_import(pattern = "lmroman*")
+theme(legend.position = "top", text=element_text(size=14, family="LM Roman 10"))
+
+# set ggplot global theme
+theme_set(theme_bw() +
+            theme(legend.position = "top") +
+            theme(text = element_text(size = 16, family = "LM Roman 10")))
+
+# multiple figures together
+if(!require(devtools)) install.packages("devtools")
+devtools::install_github("thomasp85/patchwork")
+library(patchwork)
+
+```
+
+Read the data
+
+```{r}
+before <- read.csv(file = "Data/before.csv", sep = ",")
+after <- read.csv(file = "Data/after.csv", sep = ",")
+
+```
+
+### Pre-process the data
+
+```{r}
+before <- before %>% select(GroupId, ArtifactId, Version, Dependencies, DUsages, Release)
+
+# process dates before
+before$Release <- as.character(before$Release)
+before$Release <- substr(before$Release, start = 1, stop = 10)
+before$Release <- as.Date(before$Release)
+
+# process dates after
+after$Release <- as.character(after$Release)
+after$Release <- substr(after$Release, start = 1, stop = 10)
+after$Release <- as.Date(after$Release)
+
+```
+
+## Monthly evolution of the number of new versions released on Maven Central. 
+
+### Before
+
+```{r}
+# get a data frame with the number of new versions released each month
+df_new_versions_before <- before %>% 
+  select(GroupId, ArtifactId, Version, Release) %>% 
+  group_by(month = floor_date(Release, unit = "month")) %>%
+  summarize(MontlyReleases = n())
+
+# compute de cummulative value
+df_new_versions_before <- df_new_versions_before %>% mutate(CumulativeMontlyReleases = cumsum(MontlyReleases))
+
+# start from 2015 and remove the last month because it is incompleted 
+df_new_versions_before <- df_new_versions_before[1:171,]
+
+# plot the line graph
+df_new_versions_before %>% ggplot(aes(x = month, y = CumulativeMontlyReleases)) + 
+  geom_line() + 
+  scale_x_date(date_breaks = "2 year", date_labels = "%Y") +
+  scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+   ylab(TeX("#GAV ($log_{10}$ scale)")) +
+   annotation_logticks(sides = "l") +
+   xlab("Year") 
+
+```
+
+### After
+
+```{r}
+# get a data frame with the number of new versions released each month
+df_new_versions_after <- after %>% 
+  select(GroupId, ArtifactId, Version, Release) %>% 
+  group_by(month = floor_date(Release, unit = "month")) %>%
+  summarize(MontlyReleases = n())
+
+# compute de cummulative value
+df_new_versions_after <- df_new_versions_after %>% mutate(CumulativeMontlyReleases = cumsum(MontlyReleases))
+
+# start from 2015 and remove the last month because it is incompleted 
+df_new_versions_after <- df_new_versions_after[1:183,]
+
+# plot the line graph
+df_new_versions_after %>% ggplot(aes(x = month, y = CumulativeMontlyReleases)) + 
+  geom_line() + 
+  scale_x_date(date_breaks = "2 year", date_labels = "%Y") +
+  scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+   ylab(TeX("#GAV ($log_{10}$ scale)")) +
+   annotation_logticks(sides = "l") +
+   xlab("Year") 
+
+```
+
+### Put both lines in the same plot and prettify.
+
+```{r}
+df_new_versions_before$Type <- "before"
+df_new_versions_after$Type <- "after"
+df_bind <- rbind(df_new_versions_before, df_new_versions_after)
+
+df_bind %>% ggplot(aes(x = month, y = CumulativeMontlyReleases)) +
+  # geom_smooth(method='lm',formula=y~x) +
+  geom_line(aes(linetype = Type), size = 0.7) +
+  # geom_point(aes(shape = Type), alpha = 0.5) +
+  scale_x_date(date_breaks = "2 year", date_labels = "%Y") +
+  # scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10 ^ x),
+  #   labels = scales::trans_format("log10", scales::math_format(10 ^ .x))
+  # ) +
+  ylab(TeX("#GAV released monthly")) +
+  # annotation_logticks(sides = "l") +
+  scale_shape_manual(values = c(1, 2)) +
+  xlab("Year") +
+  scale_y_continuous(labels = comma) +
+  theme(legend.title=element_blank())
+
+```
+
+## Evolution of the number of new libraries released on Maven Central.
+
+### Before
+
+```{r}
+# get a data frame with the number of new libraries released each month
+df_new_libraries <- before %>%
+  dplyr::select(GroupId, ArtifactId, Release) %>% 
+  unite(Library, GroupId, ArtifactId, sep = ":", remove = T) %>% # unite G and A to get the G:A tuple 
+  arrange(Release) %>% 
+  distinct(Library, .keep_all= TRUE) %>% # keep only the first release for each library
+  group_by(month = floor_date(Release, unit = "month")) %>%
+  summarize(MontlyReleases = n())
+
+# start from 2015 and remove the last month because it is incompleted 
+df_new_libraries <- df_new_libraries[1:171,]
+
+# plot the line graph
+df_new_libraries %>% 
+  ggplot(aes(x = month, y = MontlyReleases)) + 
+  geom_line() +
+  scale_x_date(date_breaks = "2 year", date_labels = "%Y") +
+  scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+   annotation_logticks(sides = "l") +
+   ylab(TeX("#GA ($log_{10}$ scale)")) +
+    xlab("Year") 
+
+```
+
+### After
+
+```{r}
+# get a data frame with the number of new libraries released each month
+df_new_libraries <- after %>%
+  dplyr::select(GroupId, ArtifactId, Release) %>% 
+  unite(Library, GroupId, ArtifactId, sep = ":", remove = T) %>% # unite G and A to get the G:A tuple 
+  arrange(Release) %>% 
+  distinct(Library, .keep_all= TRUE) %>% # keep only the first release for each library
+  group_by(month = floor_date(Release, unit = "month")) %>%
+  summarize(MontlyReleases = n())
+
+# start from 2015 and remove the last month because it is incompleted 
+df_new_libraries <- df_new_libraries[1:183,]
+
+# plot the line graph
+df_new_libraries %>% 
+  ggplot(aes(x = month, y = MontlyReleases)) + 
+  geom_line() +
+  scale_x_date(date_breaks = "2 year", date_labels = "%Y") +
+  scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+   annotation_logticks(sides = "l") +
+   ylab(TeX("#GA ($log_{10}$ scale)")) +
+    xlab("Year") 
+
+```
+
+
+## Comparison of number of Dependencies
+
+```{r}
+before$Type <- "before"
+after$Type <- "after"
+
+df_bind <- rbind(before, after)
+
+# adjusting values to avoid Inf values in log scale
+df_bind$Dependencies <- df_bind$Dependencies + 0.1
+
+# df_bind <- df_bind %>% slice(c(1:10000))
+
+plot <- df_bind %>% ggplot(aes(x = Type, y = Dependencies)) +
+  geom_violin() +
+  geom_boxplot(width=0.1) +
+  # scale_y_log10() +
+    # breaks = scales::trans_breaks("log10", function(x) 10^x),
+  # labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+  scale_y_continuous(trans='log10', breaks = c(0.1,10.1,100.1), labels = c("0", "10", "100")) +
+  ylab("#Dependencies") +
+  xlab(NULL)
+
+print("Dependencies")
+print("Before")
+summary(before$Dependencies)
+print("After")
+summary(after$Dependencies)
+
+```
+
+## Comparison of number ofDUsages
+
+```{r}
+before$Type <- "before"
+after$Type <- "after"
+
+df_bind <- rbind(before, after)
+
+df_bind$DUsages <- df_bind$DUsages + 0.1
+
+plot <- df_bind %>% ggplot(aes(x = Type, y = DUsages)) +
+  geom_violin() +
+  geom_boxplot(width=0.1) +
+  scale_y_log10() +
+    # breaks = scales::trans_breaks("log10", function(x) 10^x),
+  # labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+  scale_y_continuous(trans='log10', breaks = c(0.1, 1.1, 100.1, 10000.1, 1000000.1), labels = c("0", "1", "100", "10,000", "1,000,000")) +
+  
+  ylab("#Usages") +
+  xlab(NULL)
+
+print("DUsages")
+print("Before")
+summary(before$DUsages)
+print("After")
+summary(after$DUsages)
+
+```

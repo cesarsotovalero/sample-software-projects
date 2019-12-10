@@ -1,5 +1,5 @@
 ---
-title: "Maven Graph Usage"
+title: "Maven Graph Sample Usage"
 output: html_notebook
 ---
 
